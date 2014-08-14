@@ -24,6 +24,11 @@ module Rails3JQueryAutocomplete
               assert_equal "LOWER(table_name.field) ASC", active_record_get_autocomplete_order(:field, {}, model)
             end
           end
+          context 'unique is specified' do
+            should 'not return lower cased' do
+              assert_equal "field ASC", active_record_get_autocomplete_order(:field, {unique: true})
+            end
+          end
         end
       end
 
@@ -91,28 +96,44 @@ module Rails3JQueryAutocomplete
       end
 
       context '#get_autocomplete_select_clause' do
-        setup do
-          @model = Object.new
-          mock(@model).table_name  { 'table_name' }
-          mock(@model).primary_key { 'id' }
+
+        context 'default' do
+          setup do
+            @model = Object.new
+            mock(@model).table_name  { 'table_name' }
+            mock(@model).primary_key { 'id' }
+          end
+
+          should 'create a select clause' do
+            assert_equal ["table_name.id", "table_name.method"],
+                get_autocomplete_select_clause(@model, :method, {})
+          end
+
+          should 'create a select clause with hstore method' do
+            assert_equal ["table_name.id", "table_name.hsmethod"],
+                get_autocomplete_select_clause(@model, :hsmethod, {hstore: {method: :hsmethod}})
+          end
+
+          context 'with extra options' do
+            should 'return those extra fields on the clause' do
+              options = {:extra_data => ['table_name.created_at']}
+
+              assert_equal ["table_name.id", "table_name.method", "table_name.created_at"],
+                  get_autocomplete_select_clause(@model, :method, options)
+            end
+          end
         end
 
-        should 'create a select clause' do
-          assert_equal ["table_name.id", "table_name.method"],
-              get_autocomplete_select_clause(@model, :method, {})
-        end
+        context 'with unique selected' do
+          setup do
+            @model = Object.new
+            mock(@model).table_name  { 'table_name' }
+          end
 
-        should 'create a select clause with hstore method' do
-          assert_equal ["table_name.id", "table_name.hsmethod"],
-              get_autocomplete_select_clause(@model, :hsmethod, {hstore: {method: :hsmethod}})
-        end
+          should 'only return the method field' do
+            options = {:unique => true}
 
-        context 'with extra options' do
-          should 'return those extra fields on the clause' do
-            options = {:extra_data => ['table_name.created_at']}
-
-            assert_equal ["table_name.id", "table_name.method", "table_name.created_at"],
-                get_autocomplete_select_clause(@model, :method, options)
+            assert_equal ["table_name.method"], get_autocomplete_select_clause(@model, :method, options)
           end
         end
       end

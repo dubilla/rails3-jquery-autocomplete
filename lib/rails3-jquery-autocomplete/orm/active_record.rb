@@ -5,6 +5,7 @@ module Rails3JQueryAutocomplete
         order = options[:order]
 
         table_prefix = model ? "#{model.table_name}." : ""
+        order ||= "#{table_prefix}#{method} ASC" if options[:unique]
         order || "LOWER(#{table_prefix}#{method}) ASC"
       end
 
@@ -27,13 +28,19 @@ module Rails3JQueryAutocomplete
         items = items.where(get_autocomplete_where_clause(model, term, method, options)).
             limit(limit).order(order)
         items = items.where(where) unless where.blank?
+        items = items.uniq if options[:unique]
 
         items
       end
 
       def get_autocomplete_select_clause(model, method, options)
         table_name = model.table_name
-        (["#{table_name}.#{model.primary_key}", "#{table_name}.#{method}"] + (options[:extra_data].blank? ? [] : options[:extra_data]))
+        if options[:unique]
+          select = (["#{table_name}.#{method}"])
+        else
+          select = (["#{table_name}.#{model.primary_key}", "#{table_name}.#{method}"]) + (options[:extra_data].blank? ? [] : options[:extra_data])
+        end
+        select
       end
 
       def get_autocomplete_where_clause(model, term, method, options)
